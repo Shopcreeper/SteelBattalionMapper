@@ -1,0 +1,42 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0/win-x64",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {},
+    ".NETCoreApp,Version=v8.0/win-x64": {
+      "SteelBattalionMapper/1.0.0": {
+        "dependencies": {
+          "LibUsbDotNet": "3.0.224"
+        },
+        "runtime": {
+          "SteelBattalionMapper.dll": {}
+        }
+      },
+      "LibUsbDotNet/3.0.224": {
+        "runtime": {
+          "lib/net8.0/LibUsbDotNet.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.0.224.43163"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "SteelBattalionMapper/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "LibUsbDotNet/3.0.224": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yASyHZ2km43UdC0GalQjOEAIqAZkKcuOJa+RMp37XFmHcTFd7Yl3TI+2rkuZqM1b/vlWZbvlp/yStBpVLoTcaw==",
+      "path": "libusbdotnet/3.0.224",
+      "hashPath": "libusbdotnet.3.0.224.nupkg.sha512"
+    }
+  }
+}
