@@ -221,29 +221,15 @@ LED endpoint:    0x01
 
 Some individual lamps on aging controllers may be physically dead even when the corresponding button input still works.
 
-## Contributing
-
-Bug reports, hardware observations, mapping suggestions, and tested improvements are welcome.
-
-Please include:
-
-- Windows version
-- controller behavior
-- relevant console output
-- what control you were using
-- whether the associated subsystem switch was ON
-- any custom INI entries or macros involved
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-
-Author
-GitHub: `@Shopcreeper`
-
-SteelBattalionMapper is an independent community project created to keep the original Steel Battalion controller useful on modern Windows PCs.
 
 ## Disclaimer
 
 This is an independent fan/community project and is not affiliated with or endorsed by Capcom, Microsoft, or the original Steel Battalion development team.
 
 Use Zadig carefully: always confirm `VID 0A7B / PID D000` before replacing a USB driver.
+
+## Final Notes
+
+Author GitHub: `@Shopcreeper`
+
+SteelBattalionMapper is an independent community project created to keep the original Steel Battalion controller useful on modern Windows PCs.
