@@ -1,0 +1,1000 @@
+STEEL BATTALION CONTROLLER MAPPER
+WINDOWS 10 / 11 SETUP GUIDE
+=================================
+
+Created and maintained by SHOPCREEPER
+GitHub: @Shopcreeper
+
+This guide is for the original Xbox Steel Battalion controller using the
+keyboard/mouse version of the Steel Battalion Mapper.
+
+The mapper does NOT require:
+  - Windows Test Mode
+  - vJoy
+  - an unsigned Steel Battalion kernel driver
+
+The controller is accessed through Microsoft's WinUSB driver.
+
+
+============================================================
+1. WHAT YOU NEED
+============================================================
+
+HARDWARE
+--------
+- Original Steel Battalion controller
+- Windows 10 or Windows 11 PC
+- A direct USB connection is recommended during initial setup
+
+CONTROLLER IDENTIFICATION
+-------------------------
+The original Steel Battalion controller used by this mapper is:
+
+  Vendor ID (VID):  0A7B
+  Product ID (PID): D000
+
+These numbers are extremely important when installing the USB driver.
+Use them to make sure you are changing the driver for the Steel Battalion
+controller and NOT another USB device.
+
+
+FILES / SOFTWARE TO DOWNLOAD
+----------------------------
+
+1. Steel Battalion Mapper
+
+   Use the current SteelBattalionMapper release ZIP.
+
+   Extract it to a permanent folder such as:
+
+     C:\SteelBattalionMapper\
+
+   Do NOT run the mapper directly from inside the ZIP.
+
+
+2. .NET 8 SDK - Windows x64
+
+   Official Microsoft download page:
+
+     https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+
+   IMPORTANT:
+   Install the SDK, not only the Runtime.
+
+   The current mapper package starts with "dotnet run", so the SDK is needed
+   to build and launch the included source project.
+
+
+3. Zadig
+
+   Official site:
+
+     https://zadig.akeo.ie/
+
+   Zadig is portable. It does not need to be installed.
+
+   Use Zadig to assign Microsoft's WinUSB driver to the controller.
+
+
+4. libusb Windows binaries
+
+   Official libusb releases:
+
+     https://github.com/libusb/libusb/releases
+
+   Download the Windows binary archive from a release.
+
+   IMPORTANT:
+   Download the release asset containing Windows binaries (the .7z archive),
+   not GitHub's automatic "Source code (zip)" file.
+
+   You need the 64-bit Windows version of:
+
+     libusb-1.0.dll
+
+
+OPTIONAL
+--------
+If Windows cannot open a .7z archive, install 7-Zip or another application
+capable of extracting .7z files.
+
+
+============================================================
+2. EXTRACT THE MAPPER
+============================================================
+
+Create a permanent folder.
+
+Example:
+
+  C:\SteelBattalionMapper\
+
+Extract the ENTIRE mapper ZIP into that folder.
+
+You should see files similar to:
+
+  START-STEEL-BATTALION-MAPPER.cmd
+  SteelBattalionControls.ini
+  README.md
+  START_HERE.txt
+
+and a folder named:
+
+  SteelBattalionMapper\
+
+
+DO NOT:
+- move only the .cmd file
+- run the mapper from inside the ZIP
+- delete the SteelBattalionMapper source folder
+
+
+============================================================
+3. INSTALL THE .NET 8 SDK
+============================================================
+
+Run the Microsoft .NET 8 SDK x64 installer.
+
+After installation:
+
+1. Open Command Prompt.
+
+2. Type:
+
+     dotnet --version
+
+3. Press Enter.
+
+You should receive an 8.x version number.
+
+Example:
+
+  8.0.302
+
+A newer .NET 8 SDK is also fine.
+
+If Windows says:
+
+  'dotnet' is not recognized...
+
+close Command Prompt, open a new one, and try again.
+
+If it still fails, reinstall the .NET 8 SDK.
+
+
+============================================================
+4. INSTALL WINUSB WITH ZADIG
+============================================================
+
+WARNING
+-------
+Zadig can replace drivers for USB devices.
+
+MAKE SURE you have selected the Steel Battalion controller before pressing
+Replace Driver.
+
+Confirm:
+
+  VID: 0A7B
+  PID: D000
+
+
+STEP BY STEP
+------------
+
+1. Connect the Steel Battalion controller to the PC.
+
+2. Run Zadig.
+
+3. In Zadig choose:
+
+     Options
+       >
+     List All Devices
+
+4. Select the Steel Battalion controller.
+
+   The displayed device name may vary.
+
+   VERIFY THE IDs:
+
+     0A7B : D000
+
+5. In the driver selection box choose:
+
+     WinUSB
+
+6. Click:
+
+     Replace Driver
+
+   or, if no driver is currently assigned:
+
+     Install Driver
+
+7. Wait for Zadig to report success.
+
+8. Close Zadig.
+
+
+IMPORTANT
+---------
+You only need to perform this driver installation once unless Windows changes
+the device driver later.
+
+Windows Test Mode should NOT be required.
+
+
+============================================================
+5. INSTALL libusb-1.0.dll
+============================================================
+
+The C# mapper uses LibUsbDotNet, which requires the native libusb library.
+
+From the official libusb Windows release archive, locate the 64-bit Windows
+version of:
+
+  libusb-1.0.dll
+
+Use an x64 build.
+
+Copy libusb-1.0.dll into the mapper folder.
+
+Example:
+
+  C:\SteelBattalionMapper\libusb-1.0.dll
+
+
+IF THE MAPPER STILL REPORTS THAT libusb-1.0.dll IS MISSING
+----------------------------------------------------------
+
+After the mapper has attempted to build once, also copy the DLL into:
+
+  C:\SteelBattalionMapper\
+    SteelBattalionMapper\
+      bin\
+        Release\
+          net8.0-windows\
+            win-x64\
+
+The final path should contain:
+
+  SteelBattalionMapper.exe
+  libusb-1.0.dll
+
+Do not use libusb0.dll.
+The mapper expects:
+
+  libusb-1.0.dll
+
+
+============================================================
+6. FIRST LAUNCH
+============================================================
+
+Before launching:
+
+- Controller connected
+- WinUSB installed
+- .NET 8 SDK installed
+- libusb-1.0.dll available
+
+
+Run:
+
+  START-STEEL-BATTALION-MAPPER.cmd
+
+
+The first launch may take longer because .NET restores the required NuGet
+package and builds the mapper.
+
+Internet access may be needed the first time so .NET can restore:
+
+  LibUsbDotNet
+
+
+A successful startup should eventually report that the controller is connected
+and that keyboard/mouse mode is active.
+
+
+============================================================
+7. AIMING LEVER CALIBRATION
+============================================================
+
+At startup the mapper asks you to center the controls before calibration.
+
+Before pressing Enter:
+
+1. Let the Aiming Lever rest naturally.
+
+   DO NOT force it into a position you think is mathematically centered.
+
+2. Let the Sight Change stick rest at center.
+
+3. Release all pedals.
+
+4. Do not touch the Rotation Lever.
+
+5. Press Enter.
+
+
+The mapper captures the current resting center.
+
+The Aiming Lever also uses adaptive center correction during play to compensate
+for small changes in its mechanical resting position.
+
+
+============================================================
+8. REQUIRED SUBSYSTEM SWITCHES
+============================================================
+
+The five toggle switches act as subsystem power controls.
+
+FILTER CONTROL
+  Enables the Gear Lever.
+
+OXYGEN SUPPLY
+  Enables the Rotation Lever.
+
+FUEL FLOW RATE
+  Enables the middle/center panel button block.
+
+BUFFER MATERIAL
+  Enables the right panel block and Aiming Lever controls.
+
+VT LOCATION
+  Enables the pedals.
+
+
+If a control appears dead, CHECK ITS SUBSYSTEM SWITCH FIRST.
+
+
+When a subsystem is switched back on, some analog controls must return to
+neutral once before becoming active. This prevents a held pedal or lever from
+immediately sending input when power is restored.
+
+
+============================================================
+9. DEFAULT IMPORTANT CONTROLS
+============================================================
+
+AIMING LEVER
+------------
+Movement:
+  Mouse
+
+Main Weapon:
+  Left Mouse
+
+Trigger:
+  Right Mouse
+
+Lock On:
+  Space
+
+
+START + TRIGGER
+---------------
+Swaps Main Weapon and Trigger.
+
+Normal:
+
+  Main Weapon = Left Mouse
+  Trigger     = Right Mouse
+
+After swap:
+
+  Main Weapon = Right Mouse
+  Trigger     = Left Mouse
+
+
+ROTATION LEVER
+--------------
+Left:
+  A
+
+Right:
+  D
+
+
+PEDALS
+------
+Throttle:
+  W
+
+Brake:
+  S
+
+Clutch:
+  Space
+
+
+SIGHT CHANGE
+------------
+Stick:
+  Arrow Keys
+
+Click:
+  M
+
+
+TUNER
+-----
+Normal turn:
+  Mouse Wheel
+
+Hold START + turn:
+  Fine aiming sensitivity adjustment
+
+Clockwise:
+  +5%
+
+Counter-clockwise:
+  -5%
+
+
+============================================================
+10. GEAR LEVER AIMING SENSITIVITY
+============================================================
+
+FILTER CONTROL must be ON.
+
+Reverse:
+  Toggle vertical aiming inversion
+
+Neutral:
+  50%
+
+Gear 1:
+  65%
+
+Gear 2:
+  100%
+
+Gear 3:
+  130%
+
+Gear 4:
+  165%
+
+Gear 5:
+  200%
+
+
+Changing gear resets sensitivity to that gear's preset.
+
+Example:
+
+  Gear 2 = 100%
+
+  START + Tuner clockwise twice
+    = 110%
+
+  Shift to Gear 3
+    = exactly 130%
+
+
+============================================================
+11. EDITING SteelBattalionControls.ini
+============================================================
+
+The mapper includes:
+
+  SteelBattalionControls.ini
+
+Open it with Notepad or another text editor.
+
+
+EXAMPLE
+-------
+
+Change:
+
+  [AIMING_LEVER]
+  LockOn=Space
+
+to:
+
+  [AIMING_LEVER]
+  LockOn=F
+
+
+COMMON KEY NAMES
+----------------
+Examples:
+
+  A
+  B
+  C
+  1
+  2
+  3
+  Space
+  Enter
+  Escape
+  Tab
+  Ctrl
+  Shift
+  Alt
+  Left
+  Right
+  Up
+  Down
+  F1
+  F2
+  F3
+  Plus
+  Minus
+
+
+MOUSE NAMES
+-----------
+  MouseLeft
+  MouseRight
+  MouseMiddle
+  MouseX1
+  MouseX2
+
+
+============================================================
+12. PROTECTED / SYSTEM CONTROLS
+============================================================
+
+The INI contains:
+
+  [PROTECTED_SYSTEM_CONTROLS]
+
+This includes:
+
+  Eject
+  Cockpit Hatch
+  Ignition
+  Start
+
+
+You CAN change their normal keyboard output.
+
+However, the physical buttons still have mapper-level functions.
+
+Examples:
+
+  START + panel button
+    Runtime rebinding
+
+  START + Trigger
+    Swap Main Weapon / Trigger
+
+  START + Tuner
+    Fine sensitivity
+
+  Ignition + Cockpit Hatch
+    Arm control reset
+
+  Eject
+    Confirm control reset when armed
+
+
+Change these controls carefully.
+
+
+============================================================
+13. SUBSYSTEM SWITCHES IN THE INI
+============================================================
+
+The INI contains:
+
+  [SUBSYSTEM_SWITCHES]
+
+These are listed separately because the physical switches have important
+mapper-level subsystem functions.
+
+They should normally be left unchanged.
+
+Their subsystem behavior remains active.
+
+
+============================================================
+14. RUNTIME REBINDING
+============================================================
+
+Many panel buttons can be rebound without editing the INI.
+
+Typical procedure:
+
+1. Hold START.
+
+2. Press the control you want to rebind.
+
+3. Press the desired keyboard key or mouse button.
+
+4. The START lamp flashes twice.
+
+The binding is saved.
+
+
+Runtime bindings are stored separately from the INI.
+
+Priority is:
+
+  Runtime Binding
+       >
+  INI Setting
+       >
+  Built-in Default
+
+
+============================================================
+15. RESET ALL CONTROL BINDINGS
+============================================================
+
+To clear saved runtime bindings and return to the INI/default configuration:
+
+1. Hold IGNITION.
+
+2. While holding Ignition, press COCKPIT HATCH.
+
+3. The EJECT lamp flashes twice.
+
+4. Press EJECT.
+
+5. The saved runtime bindings/preferences are cleared.
+
+6. START flashes twice when complete.
+
+
+IMPORTANT
+---------
+This reset returns controls to the current INI configuration.
+
+If you edited SteelBattalionControls.ini, those INI values become the active
+base configuration.
+
+
+============================================================
+16. MACROS
+============================================================
+
+Macros are configured inside SteelBattalionControls.ini.
+
+
+SIMPLE KEY COMBINATION
+----------------------
+
+  [MACROS]
+  QuickSave=Ctrl+S
+
+
+TIMED SEQUENCE
+--------------
+
+  ReloadThenSlot1=Tap:R; Wait:80; Tap:1
+
+
+OTHER SUPPORTED STEPS
+---------------------
+
+  Tap:R
+
+  KeyDown:Ctrl
+
+  KeyUp:Ctrl
+
+  MouseClick:Left
+
+  MouseDown:Right
+
+  MouseUp:Right
+
+  WheelUp
+
+  WheelDown
+
+  Wait:100
+
+
+Example:
+
+  [MACROS]
+  RadioOne=Ctrl+Shift+1
+
+
+A panel button can call a named macro:
+
+  [PANEL_BUTTONS]
+  F1=Macro:QuickSave
+
+
+============================================================
+17. CONTROLLER BUTTON COMBINATIONS
+============================================================
+
+Physical Steel Battalion buttons can act as modifiers for other controller
+buttons.
+
+Example:
+
+  [CONTROLLER_CHORDS]
+  Override+Comm1=Macro:RadioOne
+
+
+Result:
+
+  Hold Override
+  Press Comm 1
+      >
+  RadioOne executes
+
+
+During the controller chord, the normal Override and Comm1 actions are
+suppressed for that press.
+
+
+Another example:
+
+  Override+Comm2=Ctrl+2
+
+
+Or:
+
+  F1+F2=Ctrl+Shift+S
+
+
+============================================================
+18. LED BEHAVIOR
+============================================================
+
+The mapper controls the Steel Battalion panel LEDs.
+
+SUBSYSTEM ON
+------------
+A slow startup/self-test style chase runs through the available lamps.
+
+
+SUBSYSTEM OFF
+-------------
+The subsystem lamps blink twice slowly and then turn off.
+
+
+BUTTON PRESS
+------------
+Panel buttons illuminate their associated lamp where supported by the hardware.
+
+
+REBIND COMPLETE
+---------------
+START flashes twice.
+
+
+RESET ARMED
+-----------
+EJECT flashes twice.
+
+
+RESET COMPLETE
+--------------
+START flashes twice.
+
+
+NOTE
+----
+Some original controller lamps may be physically dead.
+
+Known lamps on the development controller that do not illuminate include:
+
+  Chaff
+  Magazine Change
+  Map Zoom In / Out
+  Mode Select
+  Main Monitor Zoom Out
+  Override
+
+A dead lamp does NOT necessarily mean the button is not working.
+
+
+============================================================
+19. TROUBLESHOOTING
+============================================================
+
+PROBLEM:
+The controller is not found.
+
+CHECK:
+- Controller is plugged in.
+- Zadig installed WinUSB on VID 0A7B / PID D000.
+- Try unplugging and reconnecting the controller.
+- Try a direct USB port.
+- Close any other program attempting to access the controller.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+"libusb-1.0.dll" is missing.
+
+FIX:
+Copy the x64 libusb-1.0.dll into the mapper folder.
+
+If needed, also copy it into:
+
+  SteelBattalionMapper\
+    bin\
+      Release\
+        net8.0-windows\
+          win-x64\
+
+
+------------------------------------------------------------
+
+PROBLEM:
+'dotnet' is not recognized.
+
+FIX:
+Install the Windows x64 .NET 8 SDK.
+
+Then close and reopen Command Prompt.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+The build says SteelBattalionMapper.exe is being used by another process.
+
+CAUSE:
+An older mapper instance is still running.
+
+FIX:
+Close the previous mapper window.
+
+Or open Task Manager and end:
+
+  SteelBattalionMapper.exe
+
+Then launch again.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+Aiming Lever does nothing.
+
+CHECK:
+BUFFER MATERIAL must be ON.
+
+Also return the lever to center once after enabling the subsystem.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+Rotation Lever does nothing.
+
+CHECK:
+OXYGEN SUPPLY must be ON.
+
+Return the Rotation Lever to center once after enabling it.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+Pedals do nothing.
+
+CHECK:
+VT LOCATION must be ON.
+
+Release all pedals once after enabling it.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+Gear Lever does not change aiming sensitivity.
+
+CHECK:
+FILTER CONTROL must be ON.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+Middle panel buttons do nothing.
+
+CHECK:
+FUEL FLOW RATE must be ON.
+
+
+------------------------------------------------------------
+
+PROBLEM:
+A button says it was rebound, but an old mapping still occurs.
+
+CHECK:
+Review:
+
+  SteelBattalionControls.ini
+
+and any saved runtime binding files.
+
+If necessary, perform the controller reset sequence.
+
+
+============================================================
+20. SAFE DRIVER RECOVERY
+============================================================
+
+If the Steel Battalion controller driver needs to be reinstalled:
+
+1. Open Zadig.
+
+2. Enable:
+
+     Options > List All Devices
+
+3. Locate the controller.
+
+4. VERIFY:
+
+     VID 0A7B
+     PID D000
+
+5. Select:
+
+     WinUSB
+
+6. Replace the driver again.
+
+
+DO NOT replace the driver of another USB device just because its name looks
+similar.
+
+
+============================================================
+21. QUICK START CHECKLIST
+============================================================
+
+[ ] Extract mapper ZIP to a permanent folder
+
+[ ] Install .NET 8 SDK x64
+
+[ ] Download Zadig
+
+[ ] Connect controller
+
+[ ] Zadig -> Options -> List All Devices
+
+[ ] Confirm VID 0A7B / PID D000
+
+[ ] Install WinUSB
+
+[ ] Obtain x64 libusb-1.0.dll
+
+[ ] Place libusb-1.0.dll with the mapper
+
+[ ] Run START-STEEL-BATTALION-MAPPER.cmd
+
+[ ] Center controls and press Enter to calibrate
+
+[ ] Turn on the subsystem switches needed for the controls you want to use
+
+[ ] Test aiming, buttons, pedals, Rotation Lever, Sight Change, Gear, and Tuner
+
+[ ] Edit SteelBattalionControls.ini if desired
+
+
+============================================================
+OFFICIAL DOWNLOAD SOURCES
+============================================================
+
+.NET 8:
+  https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+
+Zadig:
+  https://zadig.akeo.ie/
+
+libusb:
+  https://github.com/libusb/libusb/releases
+
+
+============================================================
+END OF SETUP GUIDE
+============================================================
