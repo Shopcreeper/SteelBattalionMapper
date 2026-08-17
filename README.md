@@ -24,11 +24,10 @@ The goal is to make the controller practical for modern PC games without requiri
 - Pedal, Rotation Lever, and Sight Change smoothing/hysteresis
 - Panel LED startup/shutdown behavior
 - Runtime controller rebinding
-- Human-editable `SteelBattalionControls.ini`
+- Editable `SteelBattalionControls.ini`
 - Macros and physical controller-button chords
 - Subsystem lockout switches
 - Persistent settings
-- No vJoy requirement
 
 ## Quick Start
 
