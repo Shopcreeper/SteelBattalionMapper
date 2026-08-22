@@ -1,59 +1,234 @@
-# Steel Battalion Mapper
+# SteelBattalionMapper
 
-Original Steel Battalion controller -> WinUSB -> keyboard/mouse, LEDs, profiles, and OBS HUD.
+**Created and maintained by [SHOPCREEPER](https://github.com/Shopcreeper).**
 
-## Start
-1. Install .NET 8 SDK and the Steel Battalion WinUSB driver if not already installed.
-2. Run `START-STEEL-BATTALION-MAPPER.cmd`.
-3. Press Ctrl+C to stop.
+A Windows keyboard/mouse mapper for the **original Xbox Steel Battalion controller**.
 
-## Profiles
-Five player-editable INI files live beside the launcher:
+The goal is to make the controller practical for modern PC games without requiring Windows Test Mode or a virtual gamepad layer. The mapper talks to the controller through **WinUSB**, translates its controls into normal keyboard/mouse input, and drives the controller's panel LEDs.
 
-- `Profile1.ini` - General Profile 1
-- `Profile2.ini` - General Profile 2
-- `Profile3.ini` - General Profile 3
-- `Profile4.ini` - General Profile 4
-- `Profile5.ini` - Armored Core VI
+> **Status:** Active development / testing. The current codebase is functional, but mappings and configuration behavior are still being refined.
 
-Switch profiles by holding **OVERRIDE** and pressing **COMM 1-5**.
+## Highlights
 
-Edit the INI while the mapper is stopped, or switch to another profile before editing. The mapper reloads the selected profile when you switch into it.
+- Original Steel Battalion controller support (`VID 0A7B`, `PID D000`)
+- Windows 10 / Windows 11
+- WinUSB input through Zadig
+- Keyboard + mouse output
+- Aiming Lever mouse control with:
+  - soft radial deadzone
+  - nonlinear precision curve
+  - adaptive center correction
+  - acceleration smoothing
+  - gear-based sensitivity
+  - Start + Tuner fine sensitivity adjustment
+- Pedal, Rotation Lever, and Sight Change smoothing/hysteresis
+- Panel LED startup/shutdown behavior
+- Runtime controller rebinding
+- Editable `SteelBattalionControls.ini`
+- Macros and physical controller-button chords
+- Subsystem lockout switches
+- Persistent settings
 
-### Binding syntax
-Under `[Bindings]`:
+## Quick Start
+
+Full instructions are in:
+
+**[docs/SETUP_GUIDE.txt](docs/SETUP_GUIDE.txt)**
+
+The short version:
+
+1. Install the **.NET 8 SDK x64**.
+2. Connect the Steel Battalion controller.
+3. Use **Zadig** to install **WinUSB** for the device with:
+   - VID: `0A7B`
+   - PID: `D000`
+4. Obtain the x64 `libusb-1.0.dll`.
+5. Place the mapper folder with the START-STEEL-BATTALION-MAPPER.cmd.
+6. Run:
+START-STEEL-BATTALION-MAPPER.cmd
+7. Let the controls rest naturally and calibrate when prompted.
+
+## Default Controls
+
+### Aiming Lever
+
+| Controller | Output |
+|---|---|
+| Aiming Lever | Mouse |
+| Main Weapon | Left Mouse |
+| Trigger | Right Mouse |
+| Lock On | Space |
+
+`Start + Trigger` swaps Main Weapon and Trigger.
+
+### Movement / Vehicle Controls
+
+| Controller | Output |
+|---|---|
+| Rotation Lever Left | A |
+| Rotation Lever Right | D |
+| Throttle | W |
+| Brake | S |
+| Clutch | Space |
+| Sight Change | Arrow Keys |
+| Sight Change Click | M |
+| Tuner | Mouse Wheel |
+
+### Aiming Sensitivity
+
+The Gear Lever controls Aiming Lever sensitivity:
+
+| Gear | Sensitivity |
+|---|---:|
+| N | 50% |
+| 1 | 65% |
+| 2 | 100% |
+| 3 | 130% |
+| 4 | 165% |
+| 5 | 200% |
+| R | Toggle Y-axis inversion |
+
+`Start + Tuner` adjusts sensitivity in 5% steps.
+
+Changing gear resets the sensitivity to that gear's preset.
+
+## INI Configuration
+
+`SteelBattalionControls.ini` is the human-editable base control map.
+
+Example:
 
 ```ini
-17.Washing=Keyboard:X
-03.LockOn=Mouse:Middle
+[AIMING_LEVER]
+MainWeapon=MouseLeft
+Trigger=MouseRight
+LockOn=Space
+
+[ROTATION_LEVER]
+Left=A
+Right=D
+
+[PEDALS]
+Throttle=W
+Brake=S
+Clutch=Space
 ```
 
-Supported mouse names: `Left`, `Right`, `Middle`, `X1`, `X2`.
+Runtime rebindings take priority over the INI.
 
-Common keyboard names include A-Z, 0-9, Space, Enter, Escape, Tab, Shift, Control, arrows, F1-F12, Plus, Minus, and Numpad0-Numpad9.
+### Protected / System Controls
 
-The controller's built-in START + button remapping system now writes the new binding back into the active `ProfileN.ini`.
+The following controls live in a separate INI section because they also perform mapper-level functions:
 
-## Profile 5 - Armored Core VI
-`Profile5.ini` also contains an `[AC6]` section for player tuning:
+```ini
+[PROTECTED_SYSTEM_CONTROLS]
+Eject=Escape
+CockpitHatch=H
+Ignition=I
+Start=Enter
+```
 
-- `SightMouseSensitivityScale` - normal Sight Change camera speed
-- `SightMouseSmoothing` - smoothing amount
-- `QuickTurnThreshold` - how far the Sight Change lever must be pushed
-- `QuickTurnRearm` - how far it must return before another quick turn
-- `QuickTurnMousePixels` - camera snap distance
-- `QuickTurnLeadMs` - delay between Boost and direction
-- `QuickTurnHoldMs` - quick-turn direction hold time
+Their normal keyboard output can be changed, but their physical system functions remain active.
 
-Profile 5 uses the custom AC6 macros and movement behavior already built into the mapper.
+### Macros
 
-## Alternate control mode
-Profiles 1-4: hold **OVERRIDE + Aiming Lever Trigger** to toggle the alternate mode:
+Macros can be declared in the INI:
 
-- Aiming Lever -> 8-way WASD
-- Sight Change -> mouse
+```ini
+[MACROS]
+QuickSave=Ctrl+S
+RadioOne=Ctrl+Shift+1
+ReloadThenSlot1=Tap:R; Wait:80; Tap:1
+```
 
-The `[Movement]` section in each INI controls its deadzone and straight-vs-diagonal sectors.
+A panel button can call one:
 
-## Factory reset
-The mapper's existing reset gesture restores all five profile INIs to their default configuration.
+```ini
+[PANEL_BUTTONS]
+F1=Macro:QuickSave
+```
+
+### Controller Chords
+
+Physical Steel Battalion buttons can also be used together:
+
+```ini
+[CONTROLLER_CHORDS]
+Override+Comm1=Macro:RadioOne
+Override+Comm2=Ctrl+2
+```
+
+When a chord fires, the normal actions of its constituent buttons are suppressed for that press.
+
+## Subsystem Switches
+
+The five physical toggle switches act as subsystem power/lockout controls:
+
+| Switch | Controls |
+|---|---|
+| Filter Control | Gear Lever |
+| Oxygen Supply | Rotation Lever |
+| Fuel Flow Rate | Center / middle button block |
+| Buffer Material | Right block + Aiming Lever |
+| VT Location | Pedals |
+
+These are intentionally treated differently from ordinary remappable buttons.
+
+## Reset Controls
+
+To clear saved runtime bindings/preferences:
+
+1. Hold **Ignition**.
+2. While holding it, press **Cockpit Hatch**.
+3. The **Eject** lamp flashes twice.
+4. Press **Eject**.
+5. **Start** flashes twice when complete.
+
+The mapper then returns to the current INI/default configuration.
+
+## Building
+
+Requirements:
+
+- Windows 10 or Windows 11
+- .NET 8 SDK
+- x64 target
+
+Build:
+
+```powershell
+dotnet restore .\SteelBattalionMapper\SteelBattalionMapper.csproj
+dotnet build .\SteelBattalionMapper\SteelBattalionMapper.csproj -c Release
+```
+
+Run:
+
+```powershell
+dotnet run --project .\SteelBattalionMapper\SteelBattalionMapper.csproj -c Release
+```
+
+## USB / Hardware Notes
+
+Known controller identifiers:
+
+```text
+VID: 0A7B
+PID: D000
+Input endpoint:  0x82
+LED endpoint:    0x01
+```
+
+Some individual lamps on aging controllers may be physically dead even when the corresponding button input still works.
+
+
+## Disclaimer
+
+This is an independent fan/community project and is not affiliated with or endorsed by Capcom, Microsoft, or the original Steel Battalion development team.
+
+Use Zadig carefully: always confirm `VID 0A7B / PID D000` before replacing a USB driver.
+
+## Final Notes
+
+Author GitHub: `@Shopcreeper`
+
+SteelBattalionMapper is an independent community project created to keep the original Steel Battalion controller useful on modern Windows PCs.
