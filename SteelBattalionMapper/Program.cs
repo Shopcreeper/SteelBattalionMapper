@@ -22,8 +22,6 @@ internal static class Program
 
         int endpointNumber = GetIntArg(args, "--endpoint", 2);
         int ledEndpoint = GetIntArg(args, "--led-endpoint", 1);
-        int overlayPort = GetIntArg(args, "--overlay-port", 17871);
-        bool overlayEnabled = !args.Any(a => string.Equals(a, "--no-overlay", StringComparison.OrdinalIgnoreCase));
 
         Console.CancelKeyPress += (_, e) =>
         {
@@ -33,17 +31,6 @@ internal static class Program
 
         try
         {
-            using StreamOverlayServer? overlay = overlayEnabled ? new StreamOverlayServer(overlayPort) : null;
-            if (overlay is not null)
-            {
-                overlay.Start();
-                Console.WriteLine($"OBS stream overlay: {overlay.Url}");
-                Console.WriteLine("Add it to OBS as a 1920x1080 Browser Source.");
-                Console.WriteLine($"HUD editor: {overlay.Url}?edit=1");
-                Console.WriteLine($"HUD-only source: {overlay.Url}?hudonly=1");
-                Console.WriteLine();
-            }
-
             using var usb =
                 new SteelBattalionUsb(
                     VendorId,

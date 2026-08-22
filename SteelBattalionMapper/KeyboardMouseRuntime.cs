@@ -979,15 +979,6 @@ internal static class KeyboardMouseRuntime
                 }
                 previousTuner = raw.Tuner;
 
-                StreamTelemetryHub.Update(
-                    raw,
-                    n.AimX, n.AimY, n.Rotation,
-                    n.SightX, n.SightY,
-                    n.Clutch, n.Brake, n.Throttle,
-                    aimSensitivity, sensitivityGear, mouseYInverted,
-                    filterEnabled, oxygenEnabled, fuelEnabled, bufferEnabled, vtEnabled,
-                    BuildButtonOutputs(runtimeBindings, preferences));
-
                 if (leds is not null)
                 {
                     try { leds.UpdateSubsystems(raw, filterEnabled, oxygenEnabled, fuelEnabled, bufferEnabled, vtEnabled); }
@@ -1004,56 +995,6 @@ internal static class KeyboardMouseRuntime
             try { leds?.AllOff(); } catch { }
         }
     }
-
-    private static string[] BuildButtonOutputs(RuntimeBindings bindings, ControllerPreferences preferences)
-    {
-        var outputs = new string[40];
-
-        string BoundOrDefault(int button, ushort defaultKey)
-        {
-            RuntimeBindings.BindingValue? binding = bindings.Get(button);
-            return binding?.Name ?? RuntimeBindings.KeyName(defaultKey);
-        }
-
-        outputs[1] = preferences.SwapMainWeaponAndTrigger ? "Mouse Right" : "Mouse Left";
-        outputs[2] = preferences.SwapMainWeaponAndTrigger ? "Mouse Left" : "Mouse Right";
-        outputs[3] = BoundOrDefault(3, KeyboardMouseOutput.Keys.Space);
-        outputs[4] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.Escape);
-        outputs[5] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.H);
-        outputs[6] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.I);
-        outputs[7] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.Enter);
-        outputs[8] = BoundOrDefault(8, KeyboardMouseOutput.Keys.E);
-        outputs[9] = BoundOrDefault(9, KeyboardMouseOutput.Keys.Z);
-        outputs[10] = BoundOrDefault(10, KeyboardMouseOutput.Keys.Tab);
-        outputs[11] = BoundOrDefault(11, KeyboardMouseOutput.Keys.C);
-        outputs[12] = BoundOrDefault(12, KeyboardMouseOutput.Keys.OemPlus);
-        outputs[13] = BoundOrDefault(13, KeyboardMouseOutput.Keys.OemMinus);
-        outputs[14] = BoundOrDefault(14, KeyboardMouseOutput.Keys.F);
-        outputs[15] = BoundOrDefault(15, KeyboardMouseOutput.Keys.G);
-        outputs[16] = BoundOrDefault(16, KeyboardMouseOutput.Keys.L);
-        outputs[17] = BoundOrDefault(17, KeyboardMouseOutput.Keys.X);
-        outputs[18] = BoundOrDefault(18, KeyboardMouseOutput.Keys.C);
-        outputs[19] = BoundOrDefault(19, KeyboardMouseOutput.Keys.V);
-        outputs[20] = BoundOrDefault(20, KeyboardMouseOutput.Keys.T);
-        outputs[21] = BoundOrDefault(21, KeyboardMouseOutput.Keys.O);
-        outputs[22] = BoundOrDefault(22, KeyboardMouseOutput.Keys.N);
-        outputs[23] = BoundOrDefault(23, KeyboardMouseOutput.Keys.F1);
-        outputs[24] = BoundOrDefault(24, KeyboardMouseOutput.Keys.F2);
-        outputs[25] = BoundOrDefault(25, KeyboardMouseOutput.Keys.F3);
-        outputs[26] = BoundOrDefault(26, KeyboardMouseOutput.Keys.Q);
-        outputs[27] = BoundOrDefault(27, KeyboardMouseOutput.Keys.G);
-        outputs[28] = BoundOrDefault(28, KeyboardMouseOutput.Keys.R);
-        outputs[29] = BoundOrDefault(29, KeyboardMouseOutput.Keys.D1);
-        outputs[30] = BoundOrDefault(30, KeyboardMouseOutput.Keys.D2);
-        outputs[31] = BoundOrDefault(31, KeyboardMouseOutput.Keys.D3);
-        outputs[32] = BoundOrDefault(32, KeyboardMouseOutput.Keys.D4);
-        outputs[33] = BoundOrDefault(33, KeyboardMouseOutput.Keys.D5);
-        outputs[34] = BoundOrDefault(34, KeyboardMouseOutput.Keys.M);
-        for (int i = 35; i <= 39; i++) outputs[i] = "SWITCH";
-
-        return outputs;
-    }
-
 
     private static void ExecuteAc6QuickTurn(
         KeyboardMouseOutput output,

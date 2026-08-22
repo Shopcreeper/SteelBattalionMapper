@@ -11,9 +11,4 @@
     <PackageReference Include="LibUsbDotNet" Version="3.0.224" />
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="overlay.html" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="overlay-base.png" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="overlay-layout.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('overlay-layout.json')" />
-  </ItemGroup>
 </Project>

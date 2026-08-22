@@ -55,26 +55,5 @@ Profiles 1-4: hold **OVERRIDE + Aiming Lever Trigger** to toggle the alternate m
 
 The `[Movement]` section in each INI controls its deadzone and straight-vs-diagonal sectors.
 
-## OBS HUD
-The mapper hosts the overlay at:
-
-`http://127.0.0.1:17871/`
-
-Add it as a 1920x1080 Browser Source.
-
-Editor:
-
-`http://127.0.0.1:17871/?edit=1`
-
-HUD-only:
-
-`http://127.0.0.1:17871/?hudonly=1`
-
-The editable art/layout files are in `SteelBattalionMapper`:
-
-- `overlay-base.png`
-- `overlay-layout.json`
-- `overlay.html`
-
 ## Factory reset
 The mapper's existing reset gesture restores all five profile INIs to their default configuration.

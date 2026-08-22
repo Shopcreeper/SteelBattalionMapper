@@ -715,11 +715,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
+      "projectUniqueName": "C:\\Steel\\Final\\GUI Test\\TEST\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
       "projectName": "SteelBattalionMapper",
-      "projectPath": "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
+      "projectPath": "C:\\Steel\\Final\\GUI Test\\TEST\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
       "packagesPath": "C:\\Users\\Tobis\\.nuget\\packages\\",
-      "outputPath": "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\obj\\",
+      "outputPath": "C:\\Steel\\Final\\GUI Test\\TEST\\SteelBattalionMapper\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Tobis\\AppData\\Roaming\\NuGet\\NuGet.Config",
