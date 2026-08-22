@@ -33,7 +33,7 @@ The goal is to make the controller practical for modern PC games without requiri
 
 Full instructions are in:
 
-**[docs/SETUP_GUIDE.txt](docs/SETUP_GUIDE.txt)**
+**[SETUP_GUIDE.txt](docs/SETUP_GUIDE.txt)**
 
 The short version:
 
