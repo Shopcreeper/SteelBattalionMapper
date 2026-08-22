@@ -29,6 +29,29 @@ internal static class KeyboardMouseRuntime
     private const double RotationThreshold = 0.22;
     private const double SightThreshold = 0.32;
     private const double FineSensitivityStep = 0.05;
+
+    // Profile 5: ARMORED CORE VI special controls.
+    private const double Ac6QuickTurnThreshold = 0.88;
+    private const double Ac6QuickTurnRearm = 0.70;
+    // Starting calibration for roughly a 90-degree (25% of 360) camera snap.
+    // If AC6 mouse sensitivity is changed in-game, this is the one value to retune.
+    private const int Ac6QuickTurnMousePixels = 560;
+    private const int Ac6QuickTurnLeadMs = 25;
+    private const int Ac6QuickTurnHoldMs = 85;
+
+    // Profile 5 Sight Change mouse shaping. The physical Sight Change lever is
+    // much shorter/twitchier than the main Aiming Lever, so AC6 gets its own
+    // slower response plus a low-pass filter before the normal mouse curve.
+    private const double Ac6SightMouseSensitivityScale = 0.42;
+    private const double Ac6SightMouseSmoothing = 0.18;
+
+    // Alternate movement mode: the Aiming Lever becomes a digital 8-way WASD stick.
+    // The center deadzone is intentionally larger than normal mouse aiming.
+    // Cardinal directions also get a broad angular cone: a diagonal is only entered
+    // once the secondary axis reaches this fraction of the dominant axis.
+    // 0.62 gives roughly +/-32 degrees of forgiveness around W/S/A/D.
+    private const double AltDriveDeadzone = 0.10;
+    private const double AltDriveDiagonalEntryRatio = 0.62;
     private const double AimRestCaptureRadius = 0.105;
     private const double AimRestRawMotionThreshold = 180.0;
     private const double AimCenterFollowRate = 0.025;
@@ -84,14 +107,46 @@ internal static class KeyboardMouseRuntime
         sbyte previousGear = 127;
         byte? previousTuner = null;
 
-        var runtimeBindings = new RuntimeBindings();
+        int activeProfile = 1;
+        RuntimeBindings runtimeBindings = new RuntimeBindings(activeProfile);
+        ProfileIni profileIni = new ProfileIni(activeProfile);
         var preferences = new ControllerPreferences();
+
+        double altDriveDeadzone = profileIni.GetDouble("Movement", "AltDriveDeadzone", AltDriveDeadzone);
+        double altDriveDiagonalEntryRatio = profileIni.GetDouble("Movement", "AltDriveDiagonalEntryRatio", AltDriveDiagonalEntryRatio);
+        double ac6QuickTurnThreshold = profileIni.GetDouble("AC6", "QuickTurnThreshold", Ac6QuickTurnThreshold);
+        double ac6QuickTurnRearm = profileIni.GetDouble("AC6", "QuickTurnRearm", Ac6QuickTurnRearm);
+        int ac6QuickTurnMousePixels = profileIni.GetInt("AC6", "QuickTurnMousePixels", Ac6QuickTurnMousePixels);
+        int ac6QuickTurnLeadMs = profileIni.GetInt("AC6", "QuickTurnLeadMs", Ac6QuickTurnLeadMs);
+        int ac6QuickTurnHoldMs = profileIni.GetInt("AC6", "QuickTurnHoldMs", Ac6QuickTurnHoldMs);
+        double ac6SightMouseSensitivityScale = profileIni.GetDouble("AC6", "SightMouseSensitivityScale", Ac6SightMouseSensitivityScale);
+        double ac6SightMouseSmoothing = profileIni.GetDouble("AC6", "SightMouseSmoothing", Ac6SightMouseSmoothing);
+
+        // Hold OVERRIDE + press COMM 1..5 to switch profiles.
+        // Each profile owns an independent RuntimeBindings file so future
+        // per-game layouts/macros can be added without overwriting another game.
+        bool[] previousProfileChord = new bool[5];
+        bool[] suppressCommUntilRelease = new bool[5];
 
         int? bindingTarget = null;
         HashSet<ushort>? keyboardBaseline = null;
         HashSet<KeyboardMouseOutput.MouseButton>? mouseBaseline = null;
 
         bool previousStartTriggerSwapChord = false;
+
+        // OVERRIDE + TRIGGER toggles the alternate locomotion/look mode.
+        // Normal:   Aiming Lever = mouse, Sight Change = arrow keys.
+        // Alternate:Aiming Lever = digital 8-way WASD, Sight Change = mouse.
+        bool alternateControlMode = false;
+        bool previousAlternateModeChord = false;
+        bool suppressOverrideUntilRelease = false;
+        bool suppressTriggerUntilRelease = false;
+
+        // AC6 Profile 5: edge-triggered Quick Turn latches.
+        bool ac6QuickTurnLeftLatched = false;
+        bool ac6QuickTurnRightLatched = false;
+        double ac6SmoothedSightX = 0.0;
+        double ac6SmoothedSightY = 0.0;
 
         // Factory reset safety sequence.
         bool resetArmed = false;
@@ -109,8 +164,6 @@ internal static class KeyboardMouseRuntime
         double aimSensitivity = 1.00;
         int sensitivityGear = 2;
         bool mouseYInverted = false;
-
-        DateTime nextStatus = DateTime.MinValue;
 
         try
         {
@@ -165,11 +218,19 @@ internal static class KeyboardMouseRuntime
                     output.SetMouseButton(KeyboardMouseOutput.MouseButton.Middle, false);
                     output.SetMouseButton(KeyboardMouseOutput.MouseButton.X1, false);
                     output.SetMouseButton(KeyboardMouseOutput.MouseButton.X2, false);
-runtimeBindings.ResetToDefaults();
+                    RuntimeBindings.ResetAllProfiles();
+                    runtimeBindings = new RuntimeBindings(activeProfile);
+                    profileIni = new ProfileIni(activeProfile);
+                    altDriveDeadzone = profileIni.GetDouble("Movement", "AltDriveDeadzone", AltDriveDeadzone);
+                    altDriveDiagonalEntryRatio = profileIni.GetDouble("Movement", "AltDriveDiagonalEntryRatio", AltDriveDiagonalEntryRatio);
                     preferences.ResetToDefaults();
 
                     activeLockOnMouse = null;
                     activeSightClickMouse = null;
+                    alternateControlMode = false;
+                    previousAlternateModeChord = false;
+                    suppressOverrideUntilRelease = false;
+                    suppressTriggerUntilRelease = false;
                     resetArmed = false;
 
                     // Consume this physical Eject press.
@@ -191,7 +252,7 @@ runtimeBindings.ResetToDefaults();
                 // Aiming Lever mouse actions. This gesture does NOT enter
                 // ordinary rebinding mode.
                 bool startTriggerSwapChord =
-                    raw.Button(7) && raw.Button(2);
+                    activeProfile != 5 && raw.Button(7) && raw.Button(2);
 
                 if (startTriggerSwapChord && !previousStartTriggerSwapChord)
                 {
@@ -330,6 +391,141 @@ runtimeBindings.ResetToDefaults();
                     continue;
                 }
 
+                // GAME PROFILE SWITCHING:
+                // Hold OVERRIDE (21), then press COMM 1..5 (29..33).
+                // The switching chord is consumed so it does not send the
+                // Override key or the selected COMM binding to the game.
+                bool profileOverrideHeld = raw.Button(21);
+                bool anyProfileChord = false;
+
+                for (int i = 0; i < 5; i++)
+                {
+                    int commButton = 29 + i;
+                    bool chord = profileOverrideHeld && raw.Button(commButton);
+                    anyProfileChord |= chord;
+
+                    if (chord && !previousProfileChord[i])
+                    {
+                        int newProfile = i + 1;
+
+                        suppressOverrideUntilRelease = true;
+                        suppressCommUntilRelease[i] = true;
+
+                        if (newProfile != activeProfile)
+                        {
+                            // Release outputs that can otherwise remain held across
+                            // a profile boundary. Individual future profile macros
+                            // can safely start from a clean state.
+                            output.SetKey(KeyboardMouseOutput.Keys.W, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.S, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.A, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.D, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.Space, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.Tab, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.Shift, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.Control, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.R, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.P, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.Q, false);
+                            output.SetKey(KeyboardMouseOutput.Keys.E, false);
+                            output.SetMouseButton(KeyboardMouseOutput.MouseButton.Left, false);
+                            output.SetMouseButton(KeyboardMouseOutput.MouseButton.Right, false);
+                            output.SetMouseButton(KeyboardMouseOutput.MouseButton.Middle, false);
+                            output.SetMouseButton(KeyboardMouseOutput.MouseButton.X1, false);
+                            output.SetMouseButton(KeyboardMouseOutput.MouseButton.X2, false);
+                            output.ResetMouseMotion();
+
+                            activeLockOnMouse = null;
+                            activeSightClickMouse = null;
+                            alternateControlMode = false;
+                            previousAlternateModeChord = false;
+                            ac6QuickTurnLeftLatched = false;
+                            ac6QuickTurnRightLatched = false;
+                            ac6SmoothedSightX = 0.0;
+                            ac6SmoothedSightY = 0.0;
+                            bindingTarget = null;
+                            keyboardBaseline = null;
+                            mouseBaseline = null;
+
+                            activeProfile = newProfile;
+                            runtimeBindings = new RuntimeBindings(activeProfile);
+                            profileIni = new ProfileIni(activeProfile);
+                            altDriveDeadzone = profileIni.GetDouble("Movement", "AltDriveDeadzone", AltDriveDeadzone);
+                            altDriveDiagonalEntryRatio = profileIni.GetDouble("Movement", "AltDriveDiagonalEntryRatio", AltDriveDiagonalEntryRatio);
+                            ac6QuickTurnThreshold = profileIni.GetDouble("AC6", "QuickTurnThreshold", Ac6QuickTurnThreshold);
+                            ac6QuickTurnRearm = profileIni.GetDouble("AC6", "QuickTurnRearm", Ac6QuickTurnRearm);
+                            ac6QuickTurnMousePixels = profileIni.GetInt("AC6", "QuickTurnMousePixels", Ac6QuickTurnMousePixels);
+                            ac6QuickTurnLeadMs = profileIni.GetInt("AC6", "QuickTurnLeadMs", Ac6QuickTurnLeadMs);
+                            ac6QuickTurnHoldMs = profileIni.GetInt("AC6", "QuickTurnHoldMs", Ac6QuickTurnHoldMs);
+                            ac6SightMouseSensitivityScale = profileIni.GetDouble("AC6", "SightMouseSensitivityScale", Ac6SightMouseSensitivityScale);
+                            ac6SightMouseSmoothing = profileIni.GetDouble("AC6", "SightMouseSmoothing", Ac6SightMouseSmoothing);
+
+                            // Resynchronize edge tracking so buttons physically held
+                            // during the switch are not treated as fresh presses in
+                            // the newly selected profile.
+                            for (int b = 1; b <= 39; b++)
+                                previous[b] = raw.Button(b);
+
+                            Console.WriteLine();
+                            Console.WriteLine();
+                            Console.WriteLine(activeProfile == 5 ? "PROFILE 5 SELECTED - ARMORED CORE VI" : $"PROFILE {activeProfile} SELECTED");
+                        }
+                        else
+                        {
+                            Console.WriteLine();
+                            Console.WriteLine();
+                            Console.WriteLine($"PROFILE {activeProfile} ALREADY ACTIVE");
+                        }
+                    }
+
+                    previousProfileChord[i] = chord;
+
+                    if (!raw.Button(commButton))
+                        suppressCommUntilRelease[i] = false;
+                }
+
+                if (!profileOverrideHeld)
+                    suppressOverrideUntilRelease = false;
+
+                // ALTERNATE CONTROL MODE:
+                // Hold OVERRIDE (21) and pull the Aiming Lever TRIGGER (2).
+                // The chord toggles between the normal mapping and:
+                //   Aiming Lever -> digital 8-way WASD
+                //   Sight Change -> mouse movement
+                bool alternateModeChord =
+                    activeProfile != 5 && raw.Button(21) && raw.Button(2);
+
+                if (alternateModeChord && !previousAlternateModeChord)
+                {
+                    alternateControlMode = !alternateControlMode;
+                    suppressOverrideUntilRelease = true;
+                    suppressTriggerUntilRelease = true;
+
+                    // Do not carry held movement or sub-pixel mouse remainder
+                    // across the mode transition.
+                    output.SetKey(KeyboardMouseOutput.Keys.W, false);
+                    output.SetKey(KeyboardMouseOutput.Keys.S, false);
+                    output.SetKey(KeyboardMouseOutput.Keys.A, false);
+                    output.SetKey(KeyboardMouseOutput.Keys.D, false);
+                    output.ResetMouseMotion();
+
+                    Console.WriteLine();
+                    Console.WriteLine();
+                    Console.WriteLine(
+                        alternateControlMode
+                            ? "ALT CONTROL MODE: Aiming Lever = digital WASD, Sight Change = mouse"
+                            : "NORMAL CONTROL MODE: Aiming Lever = mouse, Sight Change = arrow keys");
+                }
+
+                previousAlternateModeChord = alternateModeChord;
+
+                if (!raw.Button(21))
+                    suppressOverrideUntilRelease = false;
+                if (!raw.Button(2))
+                    suppressTriggerUntilRelease = false;
+
+                bool ac6Profile = activeProfile == 5;
+
                 // Five physical subsystem switches.
                 // OFF = subsystem disabled, ON = subsystem enabled.
                 bool filterEnabled = raw.Button(35); // Gear Lever
@@ -338,52 +534,235 @@ runtimeBindings.ResetToDefaults();
                 bool bufferEnabled = raw.Button(38); // Right Block + Aiming Lever
                 bool vtEnabled     = raw.Button(39); // Pedals
 
-                // BUFFER MATERIAL powers the Right Aiming Lever.
-                if (bufferEnabled)
+                // BUFFER MATERIAL powers the right-side aiming controls.
+                // Profile 5 (AC6) permanently uses the cockpit-style drive/look split:
+                //   Aiming Lever = WASD
+                //   Sight Change = mouse camera
+                //
+                // Quick Turn is now an intentional chord rather than an automatic
+                // edge action: HOLD the Sight Change stick click (button 34), then
+                // push Sight Change hard left/right. Normal Sight Change movement
+                // remains mouse-look at all times.
+                bool ac6QuickTurnLeftRequested = false;
+                bool ac6QuickTurnRightRequested = false;
+
+                if (ac6Profile)
                 {
-                    double mouseY =
-                        mouseYInverted
-                            ? n.AimY
-                            : -n.AimY;
+                    bool quickTurnModifier = raw.Button(34);
+
+                    if (quickTurnModifier && n.SightX <= -ac6QuickTurnThreshold)
+                    {
+                        if (!ac6QuickTurnLeftLatched)
+                            ac6QuickTurnLeftRequested = true;
+                        ac6QuickTurnLeftLatched = true;
+                    }
+                    else if (!quickTurnModifier || n.SightX >= -ac6QuickTurnRearm)
+                    {
+                        ac6QuickTurnLeftLatched = false;
+                    }
+
+                    if (quickTurnModifier && n.SightX >= ac6QuickTurnThreshold)
+                    {
+                        if (!ac6QuickTurnRightLatched)
+                            ac6QuickTurnRightRequested = true;
+                        ac6QuickTurnRightLatched = true;
+                    }
+                    else if (!quickTurnModifier || n.SightX <= ac6QuickTurnRearm)
+                    {
+                        ac6QuickTurnRightLatched = false;
+                    }
+
+                    double targetSightX = n.SightX;
+                    double targetSightY = mouseYInverted ? n.SightY : -n.SightY;
+
+                    // Smooth the short Sight Change lever before feeding it into
+                    // the existing curved mouse routine. This removes the sharp,
+                    // twitchy jumps without changing the physical calibration.
+                    ac6SmoothedSightX +=
+                        (targetSightX - ac6SmoothedSightX) * ac6SightMouseSmoothing;
+                    ac6SmoothedSightY +=
+                        (targetSightY - ac6SmoothedSightY) * ac6SightMouseSmoothing;
 
                     output.MoveMouse(
-                        n.AimX,
-                        mouseY,
-                        aimSensitivity);
+                        ac6SmoothedSightX,
+                        ac6SmoothedSightY,
+                        aimSensitivity * ac6SightMouseSensitivityScale);
+                }
+                else if (alternateControlMode)
+                {
+                    double sightMouseY = mouseYInverted ? n.SightY : -n.SightY;
+                    output.MoveMouse(n.SightX, sightMouseY, aimSensitivity);
+                }
+                else if (bufferEnabled)
+                {
+                    double mouseY = mouseYInverted ? n.AimY : -n.AimY;
+                    output.MoveMouse(n.AimX, mouseY, aimSensitivity);
                 }
                 else
                 {
-                    // No residual relative mouse movement when power is removed.
                     output.ResetMouseMotion();
                 }
 
-                // Pedals / rotation.
-                // VT LOCATION powers all three pedals.
-                output.SetKey(
-                    KeyboardMouseOutput.Keys.W,
-                    vtEnabled && n.Throttle >= DriveThreshold);
-                output.SetKey(
-                    KeyboardMouseOutput.Keys.S,
-                    vtEnabled && n.Brake >= DriveThreshold);
-                output.SetKey(
-                    KeyboardMouseOutput.Keys.Space,
-                    vtEnabled && n.Clutch >= DriveThreshold);
+                // Existing pedal and Rotation Lever movement stays available.
+                // In alternate mode the Aiming Lever is OR'd into those same
+                // WASD keys, so the alternate mode does not break the original
+                // pedals or Rotation Lever.
+                //
+                // ALT DRIVE uses solid keyboard holds and broad 8-way sectors.
+                // This deliberately favors a cardinal direction when the stick is
+                // mostly forward/back/left/right. A diagonal is only selected when
+                // the secondary axis becomes substantial, so a slightly crooked
+                // forward push still produces W instead of immediately producing W+A/W+D.
+                bool aimForward = false;
+                bool aimBackward = false;
+                bool aimLeft = false;
+                bool aimRight = false;
 
-                // OXYGEN SUPPLY powers the Rotation Lever.
-                // Fixed mapping: Left = A, Right = D.
-                output.SetKey(
-                    KeyboardMouseOutput.Keys.A,
-                    oxygenEnabled && n.Rotation <= -RotationThreshold);
-                output.SetKey(
-                    KeyboardMouseOutput.Keys.D,
-                    oxygenEnabled && n.Rotation >= RotationThreshold);
+                if ((alternateControlMode || ac6Profile) && bufferEnabled)
+                {
+                    double driveX = n.AimX;
+                    double driveY = n.AimY;
+                    double absX = Math.Abs(driveX);
+                    double absY = Math.Abs(driveY);
+                    double dominant = Math.Max(absX, absY);
 
-                // Sight Change mini-stick = arrow keys; diagonals naturally work.
-                output.SetKey(KeyboardMouseOutput.Keys.Left, n.SightX <= -SightThreshold);
-                output.SetKey(KeyboardMouseOutput.Keys.Right, n.SightX >= SightThreshold);
-                output.SetKey(KeyboardMouseOutput.Keys.Up, n.SightY <= -SightThreshold);
-                output.SetKey(KeyboardMouseOutput.Keys.Down, n.SightY >= SightThreshold);
+                    if (dominant >= altDriveDeadzone)
+                    {
+                        if (absY >= absX)
+                        {
+                            // Forward/back is dominant. Stay cardinal unless the
+                            // sideways component is large enough to enter a diagonal.
+                            aimForward = driveY < 0;
+                            aimBackward = driveY > 0;
 
+                            if (absX >= absY * altDriveDiagonalEntryRatio)
+                            {
+                                aimLeft = driveX < 0;
+                                aimRight = driveX > 0;
+                            }
+                        }
+                        else
+                        {
+                            // Left/right is dominant. Stay cardinal unless the
+                            // vertical component is large enough to enter a diagonal.
+                            aimLeft = driveX < 0;
+                            aimRight = driveX > 0;
+
+                            if (absY >= absX * altDriveDiagonalEntryRatio)
+                            {
+                                aimForward = driveY < 0;
+                                aimBackward = driveY > 0;
+                            }
+                        }
+                    }
+                }
+
+                bool pedalForward = !ac6Profile && vtEnabled && n.Throttle >= DriveThreshold;
+                bool pedalBackward = !ac6Profile && vtEnabled && n.Brake >= DriveThreshold;
+                bool clutchDown = vtEnabled && n.Clutch >= DriveThreshold;
+                bool rotationLeft = oxygenEnabled && n.Rotation <= -RotationThreshold;
+                bool rotationRight = oxygenEnabled && n.Rotation >= RotationThreshold;
+
+                output.SetKey(KeyboardMouseOutput.Keys.W, pedalForward || aimForward);
+                output.SetKey(KeyboardMouseOutput.Keys.S, pedalBackward || aimBackward);
+                output.SetKey(KeyboardMouseOutput.Keys.Space, clutchDown);
+                output.SetKey(KeyboardMouseOutput.Keys.A, rotationLeft || aimLeft);
+                output.SetKey(KeyboardMouseOutput.Keys.D, rotationRight || aimRight);
+
+                // AC6 pedal semantics:
+                // Throttle = Boost (Tab), Brake = Quick Boost (Left Shift).
+                bool ac6BoostHeld = ac6Profile && vtEnabled && n.Throttle >= DriveThreshold;
+                bool ac6QuickBoostHeld = ac6Profile && vtEnabled && n.Brake >= DriveThreshold;
+                output.SetKey(KeyboardMouseOutput.Keys.Tab, ac6BoostHeld);
+                output.SetKey(KeyboardMouseOutput.Keys.Shift, ac6QuickBoostHeld);
+
+                // Profile 5 Quick Turn: hold Sight Change click, then push the
+                // Sight Change lever hard left/right. AC6 expects Boost first,
+                // THEN direction. We also inject an approximately 90-degree
+                // camera burst so the view follows the chassis.
+                if (ac6QuickTurnLeftRequested)
+                {
+                    ExecuteAc6QuickTurn(
+                        output,
+                        left: true,
+                        leaveBoostDown: ac6BoostHeld,
+                        leaveDirectionDown: rotationLeft || aimLeft,
+                        mousePixels: ac6QuickTurnMousePixels,
+                        leadMs: ac6QuickTurnLeadMs,
+                        holdMs: ac6QuickTurnHoldMs);
+                }
+                else if (ac6QuickTurnRightRequested)
+                {
+                    ExecuteAc6QuickTurn(
+                        output,
+                        left: false,
+                        leaveBoostDown: ac6BoostHeld,
+                        leaveDirectionDown: rotationRight || aimRight,
+                        mousePixels: ac6QuickTurnMousePixels,
+                        leadMs: ac6QuickTurnLeadMs,
+                        holdMs: ac6QuickTurnHoldMs);
+                }
+
+                // Sight Change is arrow keys only in the generic normal profile.
+                output.SetKey(KeyboardMouseOutput.Keys.Left,
+                    !ac6Profile && !alternateControlMode && n.SightX <= -SightThreshold);
+                output.SetKey(KeyboardMouseOutput.Keys.Right,
+                    !ac6Profile && !alternateControlMode && n.SightX >= SightThreshold);
+                output.SetKey(KeyboardMouseOutput.Keys.Up,
+                    !ac6Profile && !alternateControlMode && n.SightY <= -SightThreshold);
+                output.SetKey(KeyboardMouseOutput.Keys.Down,
+                    !ac6Profile && !alternateControlMode && n.SightY >= SightThreshold);
+
+                if (ac6Profile)
+                {
+                    // PROFILE 5 - ARMORED CORE VI
+                    // Profile5.ini is authoritative for these physical button bindings.
+                    // Held semantics preserve charged weapons and modifier combinations.
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 1, bufferEnabled,
+                        defaultMouse: KeyboardMouseOutput.MouseButton.Left);   // Left Hand Weapon
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 2,
+                        bufferEnabled && !suppressTriggerUntilRelease,
+                        defaultMouse: KeyboardMouseOutput.MouseButton.Right); // Right Hand Weapon
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 3, bufferEnabled,
+                        defaultMouse: KeyboardMouseOutput.MouseButton.Middle); // Target Assist
+
+                    // EJECT remains a special Core Expansion macro.
+                    ApplyAc6CoreExpansion(output, raw, previous, enabled: bufferEnabled && !resetArmed);
+
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 5,
+                        bufferEnabled && !resetArmChord, defaultKey: KeyboardMouseOutput.Keys.F);
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 6,
+                        bufferEnabled && !resetArmChord, defaultKey: KeyboardMouseOutput.Keys.I);
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 7, bufferEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.Control); // Assault Boost
+
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 10, bufferEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.Escape);
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 18, fuelEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.C); // Repair Kit
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 19, fuelEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.V); // Scan
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 20, fuelEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.P); // Purge modifier
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 26, fuelEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.Q); // Left Shoulder
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 27, fuelEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.E); // Right Shoulder
+                    ApplyProfileHeldBinding(output, runtimeBindings, raw, previous, 28, fuelEnabled,
+                        defaultKey: KeyboardMouseOutput.Keys.R); // Reload / Shift Control
+
+                    // Monitor zoom buttons remain convenient left/right utility keys.
+                    SetMomentary(output, raw, previous, 12, KeyboardMouseOutput.Keys.Left, bufferEnabled);
+                    SetMomentary(output, raw, previous, 13, KeyboardMouseOutput.Keys.Right, bufferEnabled);
+
+                    // Explicitly consume otherwise unused generic panel controls so
+                    // old defaults cannot leak into Profile 5.
+                    int[] unusedAc6Buttons = { 8, 9, 11, 14, 15, 16, 17, 21, 22, 23, 24, 25 };
+                    foreach (int b in unusedAc6Buttons)
+                        previous[b] = raw.Button(b);
+                }
+                else
+                {
                 // Main Weapon and Trigger are fixed mouse actions.
                 // START + Trigger toggles which physical button owns Left/Right.
                 //
@@ -397,7 +776,8 @@ runtimeBindings.ResetToDefaults();
                 //
                 // The START+Trigger swap gesture itself is consumed and does not
                 // emit a Trigger mouse click.
-                bool suppressTriggerForSwap = raw.Button(7);
+                bool suppressTriggerForSwap =
+                    raw.Button(7) || suppressTriggerUntilRelease;
 
                 ApplyFixedMouseButton(
                     output,
@@ -440,7 +820,9 @@ runtimeBindings.ResetToDefaults();
                     KeyboardMouseOutput.Keys.Escape,
                     bufferEnabled && !resetArmed); // Eject
                 SetMomentary(output, raw, previous, 5, KeyboardMouseOutput.Keys.H, bufferEnabled && !resetArmChord);      // Cockpit Hatch
-                SetMomentary(output, raw, previous, 6, KeyboardMouseOutput.Keys.I, bufferEnabled && !resetArmChord);      // Ignition
+                SetMomentary(
+                    output, raw, previous, 6, KeyboardMouseOutput.Keys.I,
+                    bufferEnabled && !resetArmChord); // Ignition
                 SetMomentary(output, raw, previous, 7, KeyboardMouseOutput.Keys.Enter, bufferEnabled);  // Start
                 SetRebindable(output, runtimeBindings, raw, previous, 8, KeyboardMouseOutput.Keys.E, bufferEnabled);      // Open/Close
                 SetRebindable(output, runtimeBindings, raw, previous, 9, KeyboardMouseOutput.Keys.Z, bufferEnabled);      // Map Zoom
@@ -455,7 +837,10 @@ runtimeBindings.ResetToDefaults();
                 SetRebindable(output, runtimeBindings, raw, previous, 18, KeyboardMouseOutput.Keys.C, fuelEnabled);     // Extinguisher
                 SetRebindable(output, runtimeBindings, raw, previous, 19, KeyboardMouseOutput.Keys.V, fuelEnabled);     // Chaff
                 SetRebindable(output, runtimeBindings, raw, previous, 20, KeyboardMouseOutput.Keys.T, fuelEnabled);     // Tank Detach
-                SetRebindable(output, runtimeBindings, raw, previous, 21, KeyboardMouseOutput.Keys.O, fuelEnabled);     // Override
+                SetRebindable(
+                    output, runtimeBindings, raw, previous, 21,
+                    KeyboardMouseOutput.Keys.O,
+                    fuelEnabled && !suppressOverrideUntilRelease); // Override
                 SetRebindable(output, runtimeBindings, raw, previous, 22, KeyboardMouseOutput.Keys.N, fuelEnabled);     // Night Scope
                 SetRebindable(output, runtimeBindings, raw, previous, 23, KeyboardMouseOutput.Keys.F1, fuelEnabled);
                 SetRebindable(output, runtimeBindings, raw, previous, 24, KeyboardMouseOutput.Keys.F2, fuelEnabled);
@@ -464,12 +849,20 @@ runtimeBindings.ResetToDefaults();
                 SetRebindable(output, runtimeBindings, raw, previous, 27, KeyboardMouseOutput.Keys.G, fuelEnabled);     // Sub Weapon Control
                 SetRebindable(output, runtimeBindings, raw, previous, 28, KeyboardMouseOutput.Keys.R, fuelEnabled);     // Magazine Change
 
-                // Communications 1..5 exactly as requested.
-                SetRebindable(output, runtimeBindings, raw, previous, 29, KeyboardMouseOutput.Keys.D1, fuelEnabled);
-                SetRebindable(output, runtimeBindings, raw, previous, 30, KeyboardMouseOutput.Keys.D2, fuelEnabled);
-                SetRebindable(output, runtimeBindings, raw, previous, 31, KeyboardMouseOutput.Keys.D3, fuelEnabled);
-                SetRebindable(output, runtimeBindings, raw, previous, 32, KeyboardMouseOutput.Keys.D4, fuelEnabled);
-                SetRebindable(output, runtimeBindings, raw, previous, 33, KeyboardMouseOutput.Keys.D5, fuelEnabled);
+                }
+
+                // Communications 1..5. When OVERRIDE is held these become
+                // profile selectors and their normal game bindings are suppressed.
+                SetRebindable(output, runtimeBindings, raw, previous, 29, KeyboardMouseOutput.Keys.D1,
+                    fuelEnabled && !suppressCommUntilRelease[0] && !anyProfileChord);
+                SetRebindable(output, runtimeBindings, raw, previous, 30, KeyboardMouseOutput.Keys.D2,
+                    fuelEnabled && !suppressCommUntilRelease[1] && !anyProfileChord);
+                SetRebindable(output, runtimeBindings, raw, previous, 31, KeyboardMouseOutput.Keys.D3,
+                    fuelEnabled && !suppressCommUntilRelease[2] && !anyProfileChord);
+                SetRebindable(output, runtimeBindings, raw, previous, 32, KeyboardMouseOutput.Keys.D4,
+                    fuelEnabled && !suppressCommUntilRelease[3] && !anyProfileChord);
+                SetRebindable(output, runtimeBindings, raw, previous, 33, KeyboardMouseOutput.Keys.D5,
+                    fuelEnabled && !suppressCommUntilRelease[4] && !anyProfileChord);
 
                 // Sight Change stick click.
                 ApplySightChangeClick(
@@ -478,7 +871,7 @@ runtimeBindings.ResetToDefaults();
                     raw,
                     previous,
                     ref activeSightClickMouse,
-                    enabled: true);
+                    enabled: !ac6Profile);
 
                 // The five physical toggle switches are subsystem power controls.
                 // They no longer emit F6-F10 keyboard events.
@@ -586,6 +979,15 @@ runtimeBindings.ResetToDefaults();
                 }
                 previousTuner = raw.Tuner;
 
+                StreamTelemetryHub.Update(
+                    raw,
+                    n.AimX, n.AimY, n.Rotation,
+                    n.SightX, n.SightY,
+                    n.Clutch, n.Brake, n.Throttle,
+                    aimSensitivity, sensitivityGear, mouseYInverted,
+                    filterEnabled, oxygenEnabled, fuelEnabled, bufferEnabled, vtEnabled,
+                    BuildButtonOutputs(runtimeBindings, preferences));
+
                 if (leds is not null)
                 {
                     try { leds.UpdateSubsystems(raw, filterEnabled, oxygenEnabled, fuelEnabled, bufferEnabled, vtEnabled); }
@@ -595,27 +997,6 @@ runtimeBindings.ResetToDefaults();
                     }
                 }
 
-                if (DateTime.UtcNow >= nextStatus)
-                {
-                    nextStatus = DateTime.UtcNow.AddMilliseconds(200);
-
-                    bool w = vtEnabled && n.Throttle >= DriveThreshold;
-                    bool s = vtEnabled && n.Brake >= DriveThreshold;
-                    bool sp = vtEnabled && n.Clutch >= DriveThreshold;
-                    bool a = oxygenEnabled && n.Rotation <= -RotationThreshold;
-                    bool d = oxygenEnabled && n.Rotation >= RotationThreshold;
-                    bool sl = n.SightX <= -SightThreshold;
-                    bool sr = n.SightX >= SightThreshold;
-                    bool su = n.SightY <= -SightThreshold;
-                    bool sd = n.SightY >= SightThreshold;
-
-                    Console.Write(
-                        $"\rAIM:{(bufferEnabled ? "ACTIVE " : "LOCKED ")} " +
-                        $"G{sensitivityGear} {aimSensitivity * 100:0}% " +
-                        $"Y:{(mouseYInverted ? "INV" : "NOR")} | " +
-                        $"KEYS W:{On(w)} S:{On(s)} A:{On(a)} D:{On(d)} SPACE:{On(sp)} | " +
-                        $"ARROWS L:{On(sl)} R:{On(sr)} U:{On(su)} D:{On(sd)}   ");
-                }
             }
         }
         finally
@@ -624,7 +1005,152 @@ runtimeBindings.ResetToDefaults();
         }
     }
 
-    private static string On(bool value) => value ? "ON " : "off";
+    private static string[] BuildButtonOutputs(RuntimeBindings bindings, ControllerPreferences preferences)
+    {
+        var outputs = new string[40];
+
+        string BoundOrDefault(int button, ushort defaultKey)
+        {
+            RuntimeBindings.BindingValue? binding = bindings.Get(button);
+            return binding?.Name ?? RuntimeBindings.KeyName(defaultKey);
+        }
+
+        outputs[1] = preferences.SwapMainWeaponAndTrigger ? "Mouse Right" : "Mouse Left";
+        outputs[2] = preferences.SwapMainWeaponAndTrigger ? "Mouse Left" : "Mouse Right";
+        outputs[3] = BoundOrDefault(3, KeyboardMouseOutput.Keys.Space);
+        outputs[4] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.Escape);
+        outputs[5] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.H);
+        outputs[6] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.I);
+        outputs[7] = RuntimeBindings.KeyName(KeyboardMouseOutput.Keys.Enter);
+        outputs[8] = BoundOrDefault(8, KeyboardMouseOutput.Keys.E);
+        outputs[9] = BoundOrDefault(9, KeyboardMouseOutput.Keys.Z);
+        outputs[10] = BoundOrDefault(10, KeyboardMouseOutput.Keys.Tab);
+        outputs[11] = BoundOrDefault(11, KeyboardMouseOutput.Keys.C);
+        outputs[12] = BoundOrDefault(12, KeyboardMouseOutput.Keys.OemPlus);
+        outputs[13] = BoundOrDefault(13, KeyboardMouseOutput.Keys.OemMinus);
+        outputs[14] = BoundOrDefault(14, KeyboardMouseOutput.Keys.F);
+        outputs[15] = BoundOrDefault(15, KeyboardMouseOutput.Keys.G);
+        outputs[16] = BoundOrDefault(16, KeyboardMouseOutput.Keys.L);
+        outputs[17] = BoundOrDefault(17, KeyboardMouseOutput.Keys.X);
+        outputs[18] = BoundOrDefault(18, KeyboardMouseOutput.Keys.C);
+        outputs[19] = BoundOrDefault(19, KeyboardMouseOutput.Keys.V);
+        outputs[20] = BoundOrDefault(20, KeyboardMouseOutput.Keys.T);
+        outputs[21] = BoundOrDefault(21, KeyboardMouseOutput.Keys.O);
+        outputs[22] = BoundOrDefault(22, KeyboardMouseOutput.Keys.N);
+        outputs[23] = BoundOrDefault(23, KeyboardMouseOutput.Keys.F1);
+        outputs[24] = BoundOrDefault(24, KeyboardMouseOutput.Keys.F2);
+        outputs[25] = BoundOrDefault(25, KeyboardMouseOutput.Keys.F3);
+        outputs[26] = BoundOrDefault(26, KeyboardMouseOutput.Keys.Q);
+        outputs[27] = BoundOrDefault(27, KeyboardMouseOutput.Keys.G);
+        outputs[28] = BoundOrDefault(28, KeyboardMouseOutput.Keys.R);
+        outputs[29] = BoundOrDefault(29, KeyboardMouseOutput.Keys.D1);
+        outputs[30] = BoundOrDefault(30, KeyboardMouseOutput.Keys.D2);
+        outputs[31] = BoundOrDefault(31, KeyboardMouseOutput.Keys.D3);
+        outputs[32] = BoundOrDefault(32, KeyboardMouseOutput.Keys.D4);
+        outputs[33] = BoundOrDefault(33, KeyboardMouseOutput.Keys.D5);
+        outputs[34] = BoundOrDefault(34, KeyboardMouseOutput.Keys.M);
+        for (int i = 35; i <= 39; i++) outputs[i] = "SWITCH";
+
+        return outputs;
+    }
+
+
+    private static void ExecuteAc6QuickTurn(
+        KeyboardMouseOutput output,
+        bool left,
+        bool leaveBoostDown,
+        bool leaveDirectionDown,
+        int mousePixels,
+        int leadMs,
+        int holdMs)
+    {
+        ushort direction = left
+            ? KeyboardMouseOutput.Keys.A
+            : KeyboardMouseOutput.Keys.D;
+
+        // AC6 Quick Turn wants Boost held BEFORE a fresh direction input.
+        // Force the direction up first so this works even while the Aiming
+        // Lever was already holding A/D for normal movement.
+        output.SetKey(direction, false);
+        Thread.Sleep(15);
+        output.SetKey(KeyboardMouseOutput.Keys.Tab, true);
+        Thread.Sleep(leadMs);
+        output.SetKey(direction, true);
+
+        // Keep the camera visually attached to the AC during the snap.
+        output.MoveMousePixels(left ? -mousePixels : mousePixels, 0);
+
+        Thread.Sleep(holdMs);
+        output.SetKey(direction, leaveDirectionDown);
+        output.SetKey(KeyboardMouseOutput.Keys.Tab, leaveBoostDown);
+    }
+
+    private static void ApplyDirectMouseButton(
+        KeyboardMouseOutput output,
+        SteelBattalionState raw,
+        bool[] previous,
+        int button,
+        bool enabled,
+        KeyboardMouseOutput.MouseButton mouseButton)
+    {
+        bool pressed = enabled && raw.Button(button);
+        output.SetMouseButton(mouseButton, pressed);
+        previous[button] = pressed;
+    }
+
+    private static void ApplyAc6CoreExpansion(
+        KeyboardMouseOutput output,
+        SteelBattalionState raw,
+        bool[] previous,
+        bool enabled)
+    {
+        const int button = 4; // Eject
+        bool pressed = enabled && raw.Button(button);
+
+        if (pressed && !previous[button])
+        {
+            bool leaveCtrlDown = raw.Button(7); // START may already be holding Assault Boost.
+            output.SetKey(KeyboardMouseOutput.Keys.Control, true);
+            output.SetKey(KeyboardMouseOutput.Keys.R, true);
+            Thread.Sleep(80);
+            output.SetKey(KeyboardMouseOutput.Keys.R, false);
+            output.SetKey(KeyboardMouseOutput.Keys.Control, leaveCtrlDown);
+        }
+
+        previous[button] = pressed;
+    }
+
+    private static void ApplyProfileHeldBinding(
+        KeyboardMouseOutput output,
+        RuntimeBindings bindings,
+        SteelBattalionState raw,
+        bool[] previous,
+        int button,
+        bool enabled,
+        ushort? defaultKey = null,
+        KeyboardMouseOutput.MouseButton? defaultMouse = null)
+    {
+        bool pressed = enabled && raw.Button(button);
+        RuntimeBindings.BindingValue? binding = bindings.Get(button);
+
+        if (binding is not null)
+        {
+            if (binding.Kind == RuntimeBindings.BindingKind.Mouse)
+                output.SetMouseButton(binding.MouseButton, pressed);
+            else
+                output.SetKey(binding.VirtualKey, pressed);
+        }
+        else if (defaultMouse.HasValue)
+        {
+            output.SetMouseButton(defaultMouse.Value, pressed);
+        }
+        else if (defaultKey.HasValue)
+        {
+            output.SetKey(defaultKey.Value, pressed);
+        }
+
+        previous[button] = pressed;
+    }
 
     private static void SetRebindable(
         KeyboardMouseOutput output,

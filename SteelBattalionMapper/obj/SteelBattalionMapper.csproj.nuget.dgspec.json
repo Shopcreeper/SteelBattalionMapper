@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Steel\\Final\\SteelBattalionMapper\\SteelBattalionMapper.csproj": {}
+    "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\SteelBattalionMapper.csproj": {}
   },
   "projects": {
-    "C:\\Steel\\Final\\SteelBattalionMapper\\SteelBattalionMapper.csproj": {
+    "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\SteelBattalionMapper.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Steel\\Final\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
+        "projectUniqueName": "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
         "projectName": "SteelBattalionMapper",
-        "projectPath": "C:\\Steel\\Final\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
+        "projectPath": "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\SteelBattalionMapper.csproj",
         "packagesPath": "C:\\Users\\Tobis\\.nuget\\packages\\",
-        "outputPath": "C:\\Steel\\Final\\SteelBattalionMapper\\obj\\",
+        "outputPath": "C:\\Steel\\Final\\GUI Test\\SteelBattalionMapper\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Tobis\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -48,6 +48,10 @@
             "LibUsbDotNet": {
               "target": "Package",
               "version": "[3.0.224, )"
+            },
+            "NAudio": {
+              "target": "Package",
+              "version": "[2.2.1, )"
             }
           },
           "imports": [

@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Text.Json;
 
 namespace SteelBattalionMapper;
 
@@ -20,10 +19,17 @@ internal sealed class RuntimeBindings
     }
 
     private readonly Dictionary<int, BindingEntry> _bindings = new();
-    private readonly string _path =
-        Path.Combine(AppContext.BaseDirectory, "SteelBattalionBindings.json");
+    private readonly int _profile;
+    private ProfileIni _ini;
 
-    public RuntimeBindings() => Load();
+    public int Profile => _profile;
+
+    public RuntimeBindings(int profile = 1)
+    {
+        _profile = Math.Clamp(profile, 1, 5);
+        _ini = new ProfileIni(_profile);
+        Load();
+    }
 
     public BindingValue? Get(int button)
     {
@@ -73,14 +79,20 @@ internal sealed class RuntimeBindings
     {
         _bindings.Clear();
 
-        try
+        ProfileIni.ResetProfile(_profile);
+        _ini = new ProfileIni(_profile);
+        Load();
+    }
+
+    public static void ResetAllProfiles()
+    {
+        ProfileIni.ResetAll();
+
+        // Remove legacy JSON binding files from older mapper releases.
+        string root = ProfileIni.FindMainFolder();
+        foreach (string file in Directory.GetFiles(root, "SteelBattalionBindings*.json", SearchOption.AllDirectories))
         {
-            if (File.Exists(_path))
-                File.Delete(_path);
-        }
-        catch
-        {
-            Save();
+            try { File.Delete(file); } catch { }
         }
     }
 
@@ -213,39 +225,168 @@ internal sealed class RuntimeBindings
 
     private void Load()
     {
-        try
+        _bindings.Clear();
+        foreach ((int button, string value) in _ini.EnumerateBindings())
         {
-            if (!File.Exists(_path))
-                return;
-
-            BindingFile? data =
-                JsonSerializer.Deserialize<BindingFile>(File.ReadAllText(_path));
-
-            if (data?.Bindings is null)
-                return;
-
-            foreach (BindingEntry e in data.Bindings)
-                _bindings[e.Button] = e;
-        }
-        catch
-        {
-            _bindings.Clear();
+            if (TryParseBinding(value, out BindingEntry? entry))
+            {
+                entry.Button = button;
+                _bindings[button] = entry;
+            }
         }
     }
 
     private void Save()
     {
-        var data = new BindingFile
+        // Runtime remapping writes directly back into the active ProfileN.ini.
+        foreach (BindingEntry entry in _bindings.Values.OrderBy(x => x.Button))
         {
-            Version = 2,
-            Bindings = _bindings.Values.OrderBy(x => x.Button).ToList()
+            string value = entry.Kind == "mouse"
+                ? $"Mouse:{MouseButtonName((KeyboardMouseOutput.MouseButton)entry.MouseButton).Replace("Mouse ", "")}" 
+                : $"Keyboard:{ConfigKeyName(entry.VirtualKey)}";
+            _ini.SetBinding(entry.Button, value);
+        }
+    }
+
+    private static bool TryParseBinding(string value, out BindingEntry? entry)
+    {
+        entry = null;
+        string[] parts = value.Split(':', 2, StringSplitOptions.TrimEntries);
+        if (parts.Length != 2) return false;
+
+        if (parts[0].Equals("Mouse", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!TryParseMouse(parts[1], out KeyboardMouseOutput.MouseButton mouse))
+                return false;
+            entry = new BindingEntry
+            {
+                Kind = "mouse",
+                MouseButton = (int)mouse,
+                Name = MouseButtonName(mouse)
+            };
+            return true;
+        }
+
+        if (parts[0].Equals("Keyboard", StringComparison.OrdinalIgnoreCase) &&
+            TryParseKey(parts[1], out ushort key))
+        {
+            entry = new BindingEntry
+            {
+                Kind = "keyboard",
+                VirtualKey = key,
+                Name = KeyName(key)
+            };
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseMouse(string name, out KeyboardMouseOutput.MouseButton button)
+    {
+        string n = name.Trim().Replace("Mouse", "", StringComparison.OrdinalIgnoreCase).Trim();
+        if (n.Equals("Left", StringComparison.OrdinalIgnoreCase)) { button = KeyboardMouseOutput.MouseButton.Left; return true; }
+        if (n.Equals("Right", StringComparison.OrdinalIgnoreCase)) { button = KeyboardMouseOutput.MouseButton.Right; return true; }
+        if (n.Equals("Middle", StringComparison.OrdinalIgnoreCase)) { button = KeyboardMouseOutput.MouseButton.Middle; return true; }
+        if (n.Equals("X1", StringComparison.OrdinalIgnoreCase)) { button = KeyboardMouseOutput.MouseButton.X1; return true; }
+        if (n.Equals("X2", StringComparison.OrdinalIgnoreCase)) { button = KeyboardMouseOutput.MouseButton.X2; return true; }
+        button = default;
+        return false;
+    }
+
+    private static bool TryParseKey(string name, out ushort key)
+    {
+        string n = name.Trim();
+        if (n.Length == 1)
+        {
+            char c = char.ToUpperInvariant(n[0]);
+            if (c is >= 'A' and <= 'Z' || c is >= '0' and <= '9')
+            {
+                key = (ushort)c;
+                return true;
+            }
+        }
+
+        if (n.StartsWith("F", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(n[1..], out int function) && function is >= 1 and <= 12)
+        {
+            key = (ushort)(0x6F + function);
+            return true;
+        }
+
+        if (n.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(n[6..], out int numpad) && numpad is >= 0 and <= 9)
+        {
+            key = (ushort)(0x60 + numpad);
+            return true;
+        }
+
+        var named = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Escape"] = KeyboardMouseOutput.Keys.Escape,
+            ["Esc"] = KeyboardMouseOutput.Keys.Escape,
+            ["Enter"] = KeyboardMouseOutput.Keys.Enter,
+            ["Space"] = KeyboardMouseOutput.Keys.Space,
+            ["Tab"] = KeyboardMouseOutput.Keys.Tab,
+            ["Shift"] = KeyboardMouseOutput.Keys.Shift,
+            ["Control"] = KeyboardMouseOutput.Keys.Control,
+            ["Ctrl"] = KeyboardMouseOutput.Keys.Control,
+            ["Left"] = KeyboardMouseOutput.Keys.Left,
+            ["Right"] = KeyboardMouseOutput.Keys.Right,
+            ["Up"] = KeyboardMouseOutput.Keys.Up,
+            ["Down"] = KeyboardMouseOutput.Keys.Down,
+            ["PageUp"] = KeyboardMouseOutput.Keys.PageUp,
+            ["PageDown"] = KeyboardMouseOutput.Keys.PageDown,
+            ["Home"] = KeyboardMouseOutput.Keys.Home,
+            ["End"] = KeyboardMouseOutput.Keys.End,
+            ["Insert"] = KeyboardMouseOutput.Keys.Insert,
+            ["Delete"] = KeyboardMouseOutput.Keys.Delete,
+            ["Plus"] = KeyboardMouseOutput.Keys.OemPlus,
+            ["Minus"] = KeyboardMouseOutput.Keys.OemMinus,
+            ["F1"] = KeyboardMouseOutput.Keys.F1,
+            ["F2"] = KeyboardMouseOutput.Keys.F2,
+            ["F3"] = KeyboardMouseOutput.Keys.F3,
+            ["F6"] = KeyboardMouseOutput.Keys.F6,
+            ["F7"] = KeyboardMouseOutput.Keys.F7,
+            ["F8"] = KeyboardMouseOutput.Keys.F8,
+            ["F9"] = KeyboardMouseOutput.Keys.F9,
+            ["F10"] = KeyboardMouseOutput.Keys.F10,
+            ["Numpad0"] = KeyboardMouseOutput.Keys.Numpad0,
+            ["Numpad1"] = KeyboardMouseOutput.Keys.Numpad1,
+            ["Numpad2"] = KeyboardMouseOutput.Keys.Numpad2,
+            ["Numpad3"] = KeyboardMouseOutput.Keys.Numpad3,
+            ["Numpad4"] = KeyboardMouseOutput.Keys.Numpad4,
+            ["Numpad5"] = KeyboardMouseOutput.Keys.Numpad5,
+            ["Numpad6"] = KeyboardMouseOutput.Keys.Numpad6
         };
 
-        File.WriteAllText(
-            _path,
-            JsonSerializer.Serialize(
-                data,
-                new JsonSerializerOptions { WriteIndented = true }));
+        return named.TryGetValue(n, out key);
+    }
+
+    private static string ConfigKeyName(ushort key)
+    {
+        if (key is >= 0x30 and <= 0x39 || key is >= 0x41 and <= 0x5A)
+            return ((char)key).ToString();
+
+        var names = new Dictionary<ushort, string>
+        {
+            [KeyboardMouseOutput.Keys.Escape] = "Escape",
+            [KeyboardMouseOutput.Keys.Enter] = "Enter",
+            [KeyboardMouseOutput.Keys.Space] = "Space",
+            [KeyboardMouseOutput.Keys.Tab] = "Tab",
+            [KeyboardMouseOutput.Keys.Shift] = "Shift",
+            [KeyboardMouseOutput.Keys.Control] = "Control",
+            [KeyboardMouseOutput.Keys.Left] = "Left",
+            [KeyboardMouseOutput.Keys.Right] = "Right",
+            [KeyboardMouseOutput.Keys.Up] = "Up",
+            [KeyboardMouseOutput.Keys.Down] = "Down",
+            [KeyboardMouseOutput.Keys.OemPlus] = "Plus",
+            [KeyboardMouseOutput.Keys.OemMinus] = "Minus",
+            [KeyboardMouseOutput.Keys.F1] = "F1",
+            [KeyboardMouseOutput.Keys.F2] = "F2",
+            [KeyboardMouseOutput.Keys.F3] = "F3"
+        };
+        return names.TryGetValue(key, out string? value) ? value : $"VK_0x{key:X2}";
     }
 
     private static readonly Dictionary<KeyboardMouseOutput.MouseButton, int> MouseVirtualKeys = new()
@@ -257,11 +398,6 @@ internal sealed class RuntimeBindings
         [KeyboardMouseOutput.MouseButton.X2] = 0x06
     };
 
-    private sealed class BindingFile
-    {
-        public int Version { get; set; }
-        public List<BindingEntry> Bindings { get; set; } = new();
-    }
 
     private sealed class BindingEntry
     {

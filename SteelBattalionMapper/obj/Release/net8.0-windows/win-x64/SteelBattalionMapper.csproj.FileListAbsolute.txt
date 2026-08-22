@@ -1,17 +1,27 @@
-C:\Steel\Final\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.exe
-C:\Steel\Final\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.deps.json
-C:\Steel\Final\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.runtimeconfig.json
-C:\Steel\Final\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.dll
-C:\Steel\Final\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.pdb
-C:\Steel\Final\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\LibUsbDotNet.dll
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.csproj.AssemblyReference.cache
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.GeneratedMSBuildEditorConfig.editorconfig
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.AssemblyInfoInputs.cache
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.AssemblyInfo.cs
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.csproj.CoreCompileInputs.cache
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBat.8B57E492.Up2Date
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.dll
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\refint\SteelBattalionMapper.dll
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.pdb
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.genruntimeconfig.cache
-C:\Steel\Final\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\ref\SteelBattalionMapper.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\overlay.html
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\overlay-base.png
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\overlay-layout.json
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.exe
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.deps.json
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.runtimeconfig.json
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\SteelBattalionMapper.pdb
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\LibUsbDotNet.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\NAudio.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\NAudio.Asio.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\NAudio.Core.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\NAudio.Midi.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\NAudio.Wasapi.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\NAudio.WinForms.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\bin\Release\net8.0-windows\win-x64\NAudio.WinMM.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.csproj.AssemblyReference.cache
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.GeneratedMSBuildEditorConfig.editorconfig
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.AssemblyInfoInputs.cache
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.AssemblyInfo.cs
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.csproj.CoreCompileInputs.cache
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBat.8B57E492.Up2Date
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\refint\SteelBattalionMapper.dll
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.pdb
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\SteelBattalionMapper.genruntimeconfig.cache
+C:\Steel\Final\GUI Test\SteelBattalionMapper\obj\Release\net8.0-windows\win-x64\ref\SteelBattalionMapper.dll

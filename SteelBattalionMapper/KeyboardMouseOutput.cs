@@ -181,6 +181,14 @@ internal sealed class KeyboardMouseOutput : IDisposable
         _mouseRemainderY = 0;
     }
 
+    public void MoveMousePixels(int dx, int dy)
+    {
+        if (dx == 0 && dy == 0)
+            return;
+
+        SendMouse(dx, dy, 0, MOUSEEVENTF_MOVE);
+    }
+
     public void MouseWheel(int detents)
     {
         if (detents == 0)
@@ -303,6 +311,8 @@ internal sealed class KeyboardMouseOutput : IDisposable
         public const ushort Enter = 0x0D;
         public const ushort Space = 0x20;
         public const ushort Tab = 0x09;
+        public const ushort Shift = 0x10;
+        public const ushort Control = 0x11;
 
         public const ushort Left = 0x25;
         public const ushort Up = 0x26;
@@ -335,6 +345,7 @@ internal sealed class KeyboardMouseOutput : IDisposable
         public const ushort M = 0x4D;
         public const ushort N = 0x4E;
         public const ushort O = 0x4F;
+        public const ushort P = 0x50;
         public const ushort Q = 0x51;
         public const ushort R = 0x52;
         public const ushort S = 0x53;
